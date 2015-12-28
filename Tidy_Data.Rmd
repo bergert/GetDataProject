@@ -1,0 +1,68 @@
+Steps to tidy the dataset
+=========================
+
+1. Merges the training and the test sets to create one data set
+---------------------------------------------------------------
+```{r
+# read the column names (used for both train and test raw data)
+column_names <- read.table(file.path(getwd(), "UCI HAR Dataset","features.txt"), col.names=c("index", "column_name"))
+
+# read the test data sets
+subject1  <- read.table(file.path(getwd(), "UCI HAR Dataset", "test" , "subject_test.txt"), col.names=c("Subject"))
+data1 <- read.table(file.path(getwd(), "UCI HAR Dataset", "test" , "X_test.txt"))
+activity1 <- read.table(file.path(getwd(), "UCI HAR Dataset", "test" , "Y_test.txt"), col.names=c("Activity"))
+# add column names to data1
+colnames(data1) <- column_names[,2]
+# column merge test data
+test_data <- cbind(subject1,activity1,data1)
+
+# read train data sets
+subject2 <- read.table(file.path(getwd(), "UCI HAR Dataset", "train" , "subject_train.txt"), col.names=c("Subject"))
+data2 <- read.table(file.path(getwd(), "UCI HAR Dataset", "train" , "X_train.txt"))
+activity2 <- read.table(file.path(getwd(), "UCI HAR Dataset", "train" , "Y_train.txt"), col.names=c("Activity"))
+# add column names to data2
+colnames(data2) <- column_names[,2]
+# column merge train data
+train_data <- cbind(subject2,activity2,data2)
+
+# row merge the final data frame
+data <- rbind(test_data, train_data)
+}```
+
+2. Extracts only the measurements on the mean and standard deviation for each measurement
+-----------------------------------------------------------------------------------------
+```{r
+# filter for column names coainting 'mean()' or 'std()'
+activity_ok <- grepl('mean\\(\\)|std\\(\\)',column_names[,2])
+
+# add first to columns(Subject,Activity) to boolean vector
+column_filter <- append (c(TRUE,TRUE), activity_ok)
+
+# filter the columns
+filtered_data <- data[column_filter]
+}
+
+3. Uses descriptive activity names to name the activities in the data set
+-------------------------------------------------------------------------
+```{r
+}
+
+4. Appropriately labels the data set with descriptive activity names
+--------------------------------------------------------------------
+```{r
+# read activity names
+activity_names<-read.table(file.path(getwd(), "UCI HAR Dataset","activity_labels.txt"),sep=" ",col.names=c("activityLabel","Activity"))
+
+# map the activity code to an Activity_Name (cast because R is too smart, will use factor)
+filtered_data$Activity = as.character(activity_names[filtered_data$Activity,2])
+
+# write to file
+write.table(filtered_data,file="tidy_dataset.txt")
+}
+
+5. Creates a second, independent tidy data set with the average of each variable for each activity and each subject
+-------------------------------------------------------------------------------------------------------------------
+```{r
+}
+
+
