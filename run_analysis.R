@@ -4,6 +4,7 @@
 
 #install.packages("rmarkdown")
 require(rmarkdown)
+require(data.table)
 
 file <- "getdata-projectfiles-UCI HAR Dataset.zip"
 if (!file.exists(file)) {
