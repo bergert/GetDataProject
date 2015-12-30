@@ -1,8 +1,9 @@
 ##############################################################################################################################
 # This script prepares the dataset for wearable computing
 #
-##############################################################################################################################
-# 0: Initial setup
+# all the real work is done in CodeBook.Rmd which
+# - creates the tidy data-set
+# - and at the same time renders the codebook
 ##############################################################################################################################
 #setwd("~/GitHub/GetDataProject")
 require(rmarkdown)
