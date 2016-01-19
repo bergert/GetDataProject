@@ -15,28 +15,28 @@ Steps to create
 1. Merges the training and the test sets to create one data set
 ---------------------------------------------------------------
 ```{r}
-# read the column names (used for both train and test raw data)
+# read the column names (used for both train and test raw data) from the file provided
 column_names <- read.table(file.path(getwd(), datadir,"features.txt"), col.names=c("index", "column_name"))
 
 # read the test data sets
 subject1  <- read.table(file.path(getwd(), datadir, "test" , "subject_test.txt"), col.names=c("Subject"))
 data1     <- read.table(file.path(getwd(), datadir, "test" , "X_test.txt"))
 activity1 <- read.table(file.path(getwd(), datadir, "test" , "Y_test.txt"), col.names=c("Activity"))
-# add column names to data1
+# set column names for data1
 colnames(data1) <- column_names[,2]
 # column merge test data
 test_data <- cbind(subject1,activity1,data1)
 
-# read train data sets
+# read the data sets
 subject2  <- read.table(file.path(getwd(), datadir, "train" , "subject_train.txt"), col.names=c("Subject"))
 data2     <- read.table(file.path(getwd(), datadir, "train" , "X_train.txt"))
 activity2 <- read.table(file.path(getwd(), datadir, "train" , "Y_train.txt"), col.names=c("Activity"))
-# add column names to data2
+# set column names for data2
 colnames(data2) <- column_names[,2]
-# column merge train data
+# column merge all data
 train_data <- cbind(subject2,activity2,data2)
 
-# row merge the final data frame
+# row merge to have the final data frame
 data <- rbind(test_data, train_data)
 ```
 
@@ -46,24 +46,23 @@ data <- rbind(test_data, train_data)
 # filter for column names coainting 'mean()' or 'std()'
 activity_ok <- grepl('mean\\(\\)|std\\(\\)',column_names[,2])
 
-# add first to columns(Subject,Activity) to boolean vector
+# add first to columns(Subject,Activity); they are not filtered
 column_filter <- append (c(TRUE,TRUE), activity_ok)
 
-# filter the columns
+# filter the columns on the mean and standard deviation 
 data_filtered <- data[column_filter]
 ```
 
 3. Uses descriptive activity names to name the activities in the data set
 -------------------------------------------------------------------------
-
-continue at step 4
+```{r}
+# read activity names from the provided file
+activity_names<-read.table(file.path(getwd(), datadir, "activity_labels.txt"),sep=" ",col.names=c("activityLabel","Activity"))
+```
 
 4. Appropriately labels the data set with descriptive activity names
 --------------------------------------------------------------------
 ```{r}
-# read activity names
-activity_names<-read.table(file.path(getwd(), datadir, "activity_labels.txt"),sep=" ",col.names=c("activityLabel","Activity"))
-
 # map the activity code to an Activity_Name (cast because R is too smart, will use factor)
 data_filtered$Activity = as.character(activity_names[data_filtered$Activity,2])
 ```
@@ -71,57 +70,28 @@ data_filtered$Activity = as.character(activity_names[data_filtered$Activity,2])
 5. Creates a second, independent tidy data set with the average of each variable for each activity and each subject
 ---------------------------------------------------------------------------------------------------------------------
 ```{r}
-# copy Subject and Activity
-data_tidy <- data_filtered[, 1:2]
-
-# tBodyAcc = mean (BodyAcc-mean()-X, tBodyAcc-mean()-Y,tBodyAcc-mean()-Z, tBodyAcc-std()-X, tBodyAcc-std()-Y,tBodyAcc-std()-Z)
-# fBodyBodyGyroJerkMag = mean (fBodyBodyGyroJerkMag-mean, fBodyBodyGyroJerkMag-std)
-
-# here define the new columns for the tidy data-set
-# this list is copied directly from the file "features_info.txt" 
-columns_data <- c( "tBodyAcc","tGravityAcc","tBodyAccJerk", "tBodyGyro","tBodyGyroJerk","tBodyAccMag", "tGravityAccMag","tBodyAccJerkMag",
-                   "tBodyGyroMag", "tBodyGyroJerkMag","fBodyAcc", "fBodyAccJerk","fBodyGyro","fBodyAccMag","fBodyBodyAccJerkMag",
-                   "fBodyBodyGyroMag", "fBodyBodyGyroJerkMag" )
-
-# calculate average for each value and document what is done
-col_documentation <- c("The Subjects are assigned numbers from 1 to 30.", "The Activity description")
-for (col_name in columns_data) {
-    # loop through the column names
-    col_numbers <- numeric()
-    col_temp <- "mean of ("
-    for (col_counter in 1:68) {
-        acolumn_name  <- colnames(data_filtered)[col_counter]
-        if (unlist(strsplit(acolumn_name, "-"))[1] == col_name) {
-            # and add all matching names to the vector
-            col_numbers <- c(col_numbers, col_counter)
-            col_temp <- paste(col_temp, acolumn_name)
-        }
-    }
-    # calculate the average for the given subset of columns
-    data_tidy[[col_name]] <- rowMeans(data_filtered[, col_numbers])
-    col_temp <- paste(col_temp, ")")
-    col_documentation <- c(col_documentation, col_temp)
-}
+# average of each variable for each activity and each subject
+data_tidy <- data.frame(data_filtered %>% group_by(Subject, Activity) %>% summarise_each(funs(mean)))
 
 # write the dataset to a file
 write.table(data_tidy, file="Activity_Tidy.txt", quote = FALSE, sep = "\t", row.names = FALSE)
 ```
 
-Dimensions
-==========
+Codebook Dimensions
+===================
 
-The data-set ``Activity_Tidy.txt`` has a total of `r nrow(data_tidy)` rows.
-
-```{r, results='asis', echo=FALSE}
-   print(kable(data.frame("column name"=colnames(data_tidy), "explanation"=col_documentation)), type = "html")
-```
+The data-set ``Activity_Tidy.txt`` has `r ncol(data_tidy)` columns and `r nrow(data_tidy)` rows.
 
 The Subjects are defined in ``X__test.txt`` (rows=`r nrow(subject1)`) and ``Y_train.txt`` (rows=`r nrow(subject2)`).
 
-The Activity code was mapped using the file ``activity_labels.txt`` (rows=`r nrow(activity_names)`).
+The Activity code was mapped using the file ``activity_labels.txt``; there are `r nrow(activity_names)` activities:
+`r paste(activity_names[,2],collapse=",")`.
 
+The rest of 66 variables are all the average of mean values and standard deviation values for data collected from different sensors.
+ 
 The original data contains `r nrow(column_names) ` different measurement values; which are explained in the given file ``features.txt``.
-The data for this database come from combining the files ``Y_test.txt`` and ``Y_train.txt`` files. Then only columns for mean and average are filtered. Then all data points (X,Y,Z) are combined using the mean() function to create the `r length(columns_data)`  tidy data-set.
+The data for this database come from combining the files ``Y_test.txt`` and ``Y_train.txt`` files. Then only columns for mean and average are filtered.
+The tidy data-set contains the average of each variable for each activity and each subject.
 
 ```{r }
 dim(data_tidy)

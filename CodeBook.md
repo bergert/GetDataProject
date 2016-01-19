@@ -6,7 +6,7 @@ Human Activity Recognition Using Smartphones Data Set
 Author: Thomas Berger
 (<https://github.com/bergertom/GetDataProject.git>)
 
-This codebook was generated on 2015-12-30 09:24:30 by running the script
+This codebook was generated on 2016-01-19 11:00:38 by running the script
 `run_analysis.R`.
 
 **The Codebook Dimensions are described at the end of this document.**
@@ -17,28 +17,28 @@ Steps to create
 1. Merges the training and the test sets to create one data set
 ---------------------------------------------------------------
 
-    # read the column names (used for both train and test raw data)
+    # read the column names (used for both train and test raw data) from the file provided
     column_names <- read.table(file.path(getwd(), datadir,"features.txt"), col.names=c("index", "column_name"))
 
     # read the test data sets
     subject1  <- read.table(file.path(getwd(), datadir, "test" , "subject_test.txt"), col.names=c("Subject"))
     data1     <- read.table(file.path(getwd(), datadir, "test" , "X_test.txt"))
     activity1 <- read.table(file.path(getwd(), datadir, "test" , "Y_test.txt"), col.names=c("Activity"))
-    # add column names to data1
+    # set column names for data1
     colnames(data1) <- column_names[,2]
     # column merge test data
     test_data <- cbind(subject1,activity1,data1)
 
-    # read train data sets
+    # read the data sets
     subject2  <- read.table(file.path(getwd(), datadir, "train" , "subject_train.txt"), col.names=c("Subject"))
     data2     <- read.table(file.path(getwd(), datadir, "train" , "X_train.txt"))
     activity2 <- read.table(file.path(getwd(), datadir, "train" , "Y_train.txt"), col.names=c("Activity"))
-    # add column names to data2
+    # set column names for data2
     colnames(data2) <- column_names[,2]
-    # column merge train data
+    # column merge all data
     train_data <- cbind(subject2,activity2,data2)
 
-    # row merge the final data frame
+    # row merge to have the final data frame
     data <- rbind(test_data, train_data)
 
 2. Extracts only the measurements on the mean and standard deviation for each measurement
@@ -47,22 +47,20 @@ Steps to create
     # filter for column names coainting 'mean()' or 'std()'
     activity_ok <- grepl('mean\\(\\)|std\\(\\)',column_names[,2])
 
-    # add first to columns(Subject,Activity) to boolean vector
+    # add first to columns(Subject,Activity); they are not filtered
     column_filter <- append (c(TRUE,TRUE), activity_ok)
 
-    # filter the columns
+    # filter the columns on the mean and standard deviation 
     data_filtered <- data[column_filter]
 
 3. Uses descriptive activity names to name the activities in the data set
 -------------------------------------------------------------------------
 
-continue at step 4
+    # read activity names from the provided file
+    activity_names<-read.table(file.path(getwd(), datadir, "activity_labels.txt"),sep=" ",col.names=c("activityLabel","Activity"))
 
 4. Appropriately labels the data set with descriptive activity names
 --------------------------------------------------------------------
-
-    # read activity names
-    activity_names<-read.table(file.path(getwd(), datadir, "activity_labels.txt"),sep=" ",col.names=c("activityLabel","Activity"))
 
     # map the activity code to an Activity_Name (cast because R is too smart, will use factor)
     data_filtered$Activity = as.character(activity_names[data_filtered$Activity,2])
@@ -70,169 +68,106 @@ continue at step 4
 5. Creates a second, independent tidy data set with the average of each variable for each activity and each subject
 -------------------------------------------------------------------------------------------------------------------
 
-    # copy Subject and Activity
-    data_tidy <- data_filtered[, 1:2]
-
-    # tBodyAcc = mean (BodyAcc-mean()-X, tBodyAcc-mean()-Y,tBodyAcc-mean()-Z, tBodyAcc-std()-X, tBodyAcc-std()-Y,tBodyAcc-std()-Z)
-    # fBodyBodyGyroJerkMag = mean (fBodyBodyGyroJerkMag-mean, fBodyBodyGyroJerkMag-std)
-
-    # here define the new columns for the tidy data-set
-    # this list is copied directly from the file "features_info.txt" 
-    columns_data <- c( "tBodyAcc","tGravityAcc","tBodyAccJerk", "tBodyGyro","tBodyGyroJerk","tBodyAccMag", "tGravityAccMag","tBodyAccJerkMag",
-                       "tBodyGyroMag", "tBodyGyroJerkMag","fBodyAcc", "fBodyAccJerk","fBodyGyro","fBodyAccMag","fBodyBodyAccJerkMag",
-                       "fBodyBodyGyroMag", "fBodyBodyGyroJerkMag" )
-
-    # calculate average for each value and document what is done
-    col_documentation <- c("The Subjects are assigned numbers from 1 to 30.", "The Activity description")
-    for (col_name in columns_data) {
-        # loop through the column names
-        col_numbers <- numeric()
-        col_temp <- "mean of ("
-        for (col_counter in 1:68) {
-            acolumn_name  <- colnames(data_filtered)[col_counter]
-            if (unlist(strsplit(acolumn_name, "-"))[1] == col_name) {
-                # and add all matching names to the vector
-                col_numbers <- c(col_numbers, col_counter)
-                col_temp <- paste(col_temp, acolumn_name)
-            }
-        }
-        # calculate the average for the given subset of columns
-        data_tidy[[col_name]] <- rowMeans(data_filtered[, col_numbers])
-        col_temp <- paste(col_temp, ")")
-        col_documentation <- c(col_documentation, col_temp)
-    }
+    # average of each variable for each activity and each subject
+    data_tidy <- data.frame(data_filtered %>% group_by(Subject, Activity) %>% summarise_each(funs(mean)))
 
     # write the dataset to a file
     write.table(data_tidy, file="Activity_Tidy.txt", quote = FALSE, sep = "\t", row.names = FALSE)
 
-Dimensions
-==========
+Codebook Dimensions
+===================
 
-The data-set `Activity_Tidy.txt` has a total of 10299 rows.
-
-<table>
-<thead>
-<tr class="header">
-<th align="left">column.name</th>
-<th align="left">explanation</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">Subject</td>
-<td align="left">The Subjects are assigned numbers from 1 to 30.</td>
-</tr>
-<tr class="even">
-<td align="left">Activity</td>
-<td align="left">The Activity description</td>
-</tr>
-<tr class="odd">
-<td align="left">tBodyAcc</td>
-<td align="left">mean of ( tBodyAcc-mean()-X tBodyAcc-mean()-Y tBodyAcc-mean()-Z tBodyAcc-std()-X tBodyAcc-std()-Y tBodyAcc-std()-Z )</td>
-</tr>
-<tr class="even">
-<td align="left">tGravityAcc</td>
-<td align="left">mean of ( tGravityAcc-mean()-X tGravityAcc-mean()-Y tGravityAcc-mean()-Z tGravityAcc-std()-X tGravityAcc-std()-Y tGravityAcc-std()-Z )</td>
-</tr>
-<tr class="odd">
-<td align="left">tBodyAccJerk</td>
-<td align="left">mean of ( tBodyAccJerk-mean()-X tBodyAccJerk-mean()-Y tBodyAccJerk-mean()-Z tBodyAccJerk-std()-X tBodyAccJerk-std()-Y tBodyAccJerk-std()-Z )</td>
-</tr>
-<tr class="even">
-<td align="left">tBodyGyro</td>
-<td align="left">mean of ( tBodyGyro-mean()-X tBodyGyro-mean()-Y tBodyGyro-mean()-Z tBodyGyro-std()-X tBodyGyro-std()-Y tBodyGyro-std()-Z )</td>
-</tr>
-<tr class="odd">
-<td align="left">tBodyGyroJerk</td>
-<td align="left">mean of ( tBodyGyroJerk-mean()-X tBodyGyroJerk-mean()-Y tBodyGyroJerk-mean()-Z tBodyGyroJerk-std()-X tBodyGyroJerk-std()-Y tBodyGyroJerk-std()-Z )</td>
-</tr>
-<tr class="even">
-<td align="left">tBodyAccMag</td>
-<td align="left">mean of ( tBodyAccMag-mean() tBodyAccMag-std() )</td>
-</tr>
-<tr class="odd">
-<td align="left">tGravityAccMag</td>
-<td align="left">mean of ( tGravityAccMag-mean() tGravityAccMag-std() )</td>
-</tr>
-<tr class="even">
-<td align="left">tBodyAccJerkMag</td>
-<td align="left">mean of ( tBodyAccJerkMag-mean() tBodyAccJerkMag-std() )</td>
-</tr>
-<tr class="odd">
-<td align="left">tBodyGyroMag</td>
-<td align="left">mean of ( tBodyGyroMag-mean() tBodyGyroMag-std() )</td>
-</tr>
-<tr class="even">
-<td align="left">tBodyGyroJerkMag</td>
-<td align="left">mean of ( tBodyGyroJerkMag-mean() tBodyGyroJerkMag-std() )</td>
-</tr>
-<tr class="odd">
-<td align="left">fBodyAcc</td>
-<td align="left">mean of ( fBodyAcc-mean()-X fBodyAcc-mean()-Y fBodyAcc-mean()-Z fBodyAcc-std()-X fBodyAcc-std()-Y fBodyAcc-std()-Z )</td>
-</tr>
-<tr class="even">
-<td align="left">fBodyAccJerk</td>
-<td align="left">mean of ( fBodyAccJerk-mean()-X fBodyAccJerk-mean()-Y fBodyAccJerk-mean()-Z fBodyAccJerk-std()-X fBodyAccJerk-std()-Y fBodyAccJerk-std()-Z )</td>
-</tr>
-<tr class="odd">
-<td align="left">fBodyGyro</td>
-<td align="left">mean of ( fBodyGyro-mean()-X fBodyGyro-mean()-Y fBodyGyro-mean()-Z fBodyGyro-std()-X fBodyGyro-std()-Y fBodyGyro-std()-Z )</td>
-</tr>
-<tr class="even">
-<td align="left">fBodyAccMag</td>
-<td align="left">mean of ( fBodyAccMag-mean() fBodyAccMag-std() )</td>
-</tr>
-<tr class="odd">
-<td align="left">fBodyBodyAccJerkMag</td>
-<td align="left">mean of ( fBodyBodyAccJerkMag-mean() fBodyBodyAccJerkMag-std() )</td>
-</tr>
-<tr class="even">
-<td align="left">fBodyBodyGyroMag</td>
-<td align="left">mean of ( fBodyBodyGyroMag-mean() fBodyBodyGyroMag-std() )</td>
-</tr>
-<tr class="odd">
-<td align="left">fBodyBodyGyroJerkMag</td>
-<td align="left">mean of ( fBodyBodyGyroJerkMag-mean() fBodyBodyGyroJerkMag-std() )</td>
-</tr>
-</tbody>
-</table>
+The data-set `Activity_Tidy.txt` has 68 columns and 180 rows.
 
 The Subjects are defined in `X__test.txt` (rows=2947) and `Y_train.txt`
 (rows=7352).
 
-The Activity code was mapped using the file `activity_labels.txt`
-(rows=6).
+The Activity code was mapped using the file `activity_labels.txt`; there
+are 6 activities:
+WALKING,WALKING\_UPSTAIRS,WALKING\_DOWNSTAIRS,SITTING,STANDING,LAYING.
+
+The rest of 66 variables are all the average of mean values and standard
+deviation values for data collected from different sensors.
 
 The original data contains 561 different measurement values; which are
 explained in the given file `features.txt`. The data for this database
 come from combining the files `Y_test.txt` and `Y_train.txt` files. Then
-only columns for mean and average are filtered. Then all data points
-(X,Y,Z) are combined using the mean() function to create the 17 tidy
-data-set.
+only columns for mean and average are filtered. The tidy data-set
+contains the average of each variable for each activity and each
+subject.
 
     dim(data_tidy)
 
-    ## [1] 10299    19
+    ## [1] 180  68
 
     str(data_tidy)
 
-    ## 'data.frame':    10299 obs. of  19 variables:
-    ##  $ Subject             : int  2 2 2 2 2 2 2 2 2 2 ...
-    ##  $ Activity            : chr  "STANDING" "STANDING" "STANDING" "STANDING" ...
-    ##  $ tBodyAcc            : num  -0.384 -0.456 -0.466 -0.469 -0.47 ...
-    ##  $ tGravityAcc         : num  -0.276 -0.358 -0.363 -0.363 -0.362 ...
-    ##  $ tBodyAccJerk        : num  -0.461 -0.475 -0.481 -0.47 -0.476 ...
-    ##  $ tBodyGyro           : num  -0.404 -0.472 -0.498 -0.495 -0.498 ...
-    ##  $ tBodyGyroJerk       : num  -0.537 -0.523 -0.523 -0.526 -0.524 ...
-    ##  $ tBodyAccMag         : num  -0.786 -0.961 -0.978 -0.976 -0.976 ...
-    ##  $ tGravityAccMag      : num  -0.786 -0.961 -0.978 -0.976 -0.976 ...
-    ##  $ tBodyAccJerkMag     : num  -0.913 -0.957 -0.976 -0.979 -0.988 ...
-    ##  $ tBodyGyroMag        : num  -0.779 -0.905 -0.955 -0.959 -0.963 ...
-    ##  $ tBodyGyroJerkMag    : num  -0.91 -0.959 -0.986 -0.987 -0.99 ...
-    ##  $ fBodyAcc            : num  -0.856 -0.963 -0.976 -0.978 -0.98 ...
-    ##  $ fBodyAccJerk        : num  -0.929 -0.968 -0.979 -0.98 -0.986 ...
-    ##  $ fBodyGyro           : num  -0.872 -0.941 -0.976 -0.971 -0.974 ...
-    ##  $ fBodyAccMag         : num  -0.751 -0.957 -0.98 -0.978 -0.978 ...
-    ##  $ fBodyBodyAccJerkMag : num  -0.896 -0.94 -0.971 -0.975 -0.989 ...
-    ##  $ fBodyBodyGyroMag    : num  -0.784 -0.921 -0.975 -0.974 -0.973 ...
-    ##  $ fBodyBodyGyroJerkMag: num  -0.899 -0.945 -0.984 -0.986 -0.991 ...
+    ## 'data.frame':    180 obs. of  68 variables:
+    ##  $ Subject                    : int  1 1 1 1 1 1 2 2 2 2 ...
+    ##  $ Activity                   : chr  "LAYING" "SITTING" "STANDING" "WALKING" ...
+    ##  $ tBodyAcc.mean...X          : num  0.222 0.261 0.279 0.277 0.289 ...
+    ##  $ tBodyAcc.mean...Y          : num  -0.04051 -0.00131 -0.01614 -0.01738 -0.00992 ...
+    ##  $ tBodyAcc.mean...Z          : num  -0.113 -0.105 -0.111 -0.111 -0.108 ...
+    ##  $ tBodyAcc.std...X           : num  -0.928 -0.977 -0.996 -0.284 0.03 ...
+    ##  $ tBodyAcc.std...Y           : num  -0.8368 -0.9226 -0.9732 0.1145 -0.0319 ...
+    ##  $ tBodyAcc.std...Z           : num  -0.826 -0.94 -0.98 -0.26 -0.23 ...
+    ##  $ tGravityAcc.mean...X       : num  -0.249 0.832 0.943 0.935 0.932 ...
+    ##  $ tGravityAcc.mean...Y       : num  0.706 0.204 -0.273 -0.282 -0.267 ...
+    ##  $ tGravityAcc.mean...Z       : num  0.4458 0.332 0.0135 -0.0681 -0.0621 ...
+    ##  $ tGravityAcc.std...X        : num  -0.897 -0.968 -0.994 -0.977 -0.951 ...
+    ##  $ tGravityAcc.std...Y        : num  -0.908 -0.936 -0.981 -0.971 -0.937 ...
+    ##  $ tGravityAcc.std...Z        : num  -0.852 -0.949 -0.976 -0.948 -0.896 ...
+    ##  $ tBodyAccJerk.mean...X      : num  0.0811 0.0775 0.0754 0.074 0.0542 ...
+    ##  $ tBodyAccJerk.mean...Y      : num  0.003838 -0.000619 0.007976 0.028272 0.02965 ...
+    ##  $ tBodyAccJerk.mean...Z      : num  0.01083 -0.00337 -0.00369 -0.00417 -0.01097 ...
+    ##  $ tBodyAccJerk.std...X       : num  -0.9585 -0.9864 -0.9946 -0.1136 -0.0123 ...
+    ##  $ tBodyAccJerk.std...Y       : num  -0.924 -0.981 -0.986 0.067 -0.102 ...
+    ##  $ tBodyAccJerk.std...Z       : num  -0.955 -0.988 -0.992 -0.503 -0.346 ...
+    ##  $ tBodyGyro.mean...X         : num  -0.0166 -0.0454 -0.024 -0.0418 -0.0351 ...
+    ##  $ tBodyGyro.mean...Y         : num  -0.0645 -0.0919 -0.0594 -0.0695 -0.0909 ...
+    ##  $ tBodyGyro.mean...Z         : num  0.1487 0.0629 0.0748 0.0849 0.0901 ...
+    ##  $ tBodyGyro.std...X          : num  -0.874 -0.977 -0.987 -0.474 -0.458 ...
+    ##  $ tBodyGyro.std...Y          : num  -0.9511 -0.9665 -0.9877 -0.0546 -0.1263 ...
+    ##  $ tBodyGyro.std...Z          : num  -0.908 -0.941 -0.981 -0.344 -0.125 ...
+    ##  $ tBodyGyroJerk.mean...X     : num  -0.1073 -0.0937 -0.0996 -0.09 -0.074 ...
+    ##  $ tBodyGyroJerk.mean...Y     : num  -0.0415 -0.0402 -0.0441 -0.0398 -0.044 ...
+    ##  $ tBodyGyroJerk.mean...Z     : num  -0.0741 -0.0467 -0.049 -0.0461 -0.027 ...
+    ##  $ tBodyGyroJerk.std...X      : num  -0.919 -0.992 -0.993 -0.207 -0.487 ...
+    ##  $ tBodyGyroJerk.std...Y      : num  -0.968 -0.99 -0.995 -0.304 -0.239 ...
+    ##  $ tBodyGyroJerk.std...Z      : num  -0.958 -0.988 -0.992 -0.404 -0.269 ...
+    ##  $ tBodyAccMag.mean..         : num  -0.8419 -0.9485 -0.9843 -0.137 0.0272 ...
+    ##  $ tBodyAccMag.std..          : num  -0.7951 -0.9271 -0.9819 -0.2197 0.0199 ...
+    ##  $ tGravityAccMag.mean..      : num  -0.8419 -0.9485 -0.9843 -0.137 0.0272 ...
+    ##  $ tGravityAccMag.std..       : num  -0.7951 -0.9271 -0.9819 -0.2197 0.0199 ...
+    ##  $ tBodyAccJerkMag.mean..     : num  -0.9544 -0.9874 -0.9924 -0.1414 -0.0894 ...
+    ##  $ tBodyAccJerkMag.std..      : num  -0.9282 -0.9841 -0.9931 -0.0745 -0.0258 ...
+    ##  $ tBodyGyroMag.mean..        : num  -0.8748 -0.9309 -0.9765 -0.161 -0.0757 ...
+    ##  $ tBodyGyroMag.std..         : num  -0.819 -0.935 -0.979 -0.187 -0.226 ...
+    ##  $ tBodyGyroJerkMag.mean..    : num  -0.963 -0.992 -0.995 -0.299 -0.295 ...
+    ##  $ tBodyGyroJerkMag.std..     : num  -0.936 -0.988 -0.995 -0.325 -0.307 ...
+    ##  $ fBodyAcc.mean...X          : num  -0.9391 -0.9796 -0.9952 -0.2028 0.0382 ...
+    ##  $ fBodyAcc.mean...Y          : num  -0.86707 -0.94408 -0.97707 0.08971 0.00155 ...
+    ##  $ fBodyAcc.mean...Z          : num  -0.883 -0.959 -0.985 -0.332 -0.226 ...
+    ##  $ fBodyAcc.std...X           : num  -0.9244 -0.9764 -0.996 -0.3191 0.0243 ...
+    ##  $ fBodyAcc.std...Y           : num  -0.834 -0.917 -0.972 0.056 -0.113 ...
+    ##  $ fBodyAcc.std...Z           : num  -0.813 -0.934 -0.978 -0.28 -0.298 ...
+    ##  $ fBodyAccJerk.mean...X      : num  -0.9571 -0.9866 -0.9946 -0.1705 -0.0277 ...
+    ##  $ fBodyAccJerk.mean...Y      : num  -0.9225 -0.9816 -0.9854 -0.0352 -0.1287 ...
+    ##  $ fBodyAccJerk.mean...Z      : num  -0.948 -0.986 -0.991 -0.469 -0.288 ...
+    ##  $ fBodyAccJerk.std...X       : num  -0.9642 -0.9875 -0.9951 -0.1336 -0.0863 ...
+    ##  $ fBodyAccJerk.std...Y       : num  -0.932 -0.983 -0.987 0.107 -0.135 ...
+    ##  $ fBodyAccJerk.std...Z       : num  -0.961 -0.988 -0.992 -0.535 -0.402 ...
+    ##  $ fBodyGyro.mean...X         : num  -0.85 -0.976 -0.986 -0.339 -0.352 ...
+    ##  $ fBodyGyro.mean...Y         : num  -0.9522 -0.9758 -0.989 -0.1031 -0.0557 ...
+    ##  $ fBodyGyro.mean...Z         : num  -0.9093 -0.9513 -0.9808 -0.2559 -0.0319 ...
+    ##  $ fBodyGyro.std...X          : num  -0.882 -0.978 -0.987 -0.517 -0.495 ...
+    ##  $ fBodyGyro.std...Y          : num  -0.9512 -0.9623 -0.9871 -0.0335 -0.1814 ...
+    ##  $ fBodyGyro.std...Z          : num  -0.917 -0.944 -0.982 -0.437 -0.238 ...
+    ##  $ fBodyAccMag.mean..         : num  -0.8618 -0.9478 -0.9854 -0.1286 0.0966 ...
+    ##  $ fBodyAccMag.std..          : num  -0.798 -0.928 -0.982 -0.398 -0.187 ...
+    ##  $ fBodyBodyAccJerkMag.mean.. : num  -0.9333 -0.9853 -0.9925 -0.0571 0.0262 ...
+    ##  $ fBodyBodyAccJerkMag.std..  : num  -0.922 -0.982 -0.993 -0.103 -0.104 ...
+    ##  $ fBodyBodyGyroMag.mean..    : num  -0.862 -0.958 -0.985 -0.199 -0.186 ...
+    ##  $ fBodyBodyGyroMag.std..     : num  -0.824 -0.932 -0.978 -0.321 -0.398 ...
+    ##  $ fBodyBodyGyroJerkMag.mean..: num  -0.942 -0.99 -0.995 -0.319 -0.282 ...
+    ##  $ fBodyBodyGyroJerkMag.std.. : num  -0.933 -0.987 -0.995 -0.382 -0.392 ...

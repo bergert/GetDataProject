@@ -6,8 +6,10 @@
 # - and at the same time renders the codebook
 ##############################################################################################################################
 #setwd("~/GitHub/GetDataProject")
+#source("run_analysis.R")
 require(rmarkdown)
 require(data.table)
+library(dplyr)
 
 # check if the ZIP file is downloaded, it not then download it
 file <- "getdata-projectfiles-UCI HAR Dataset.zip"
